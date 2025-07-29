@@ -7,7 +7,8 @@ on:
 
 env:
   OPENWRT_VERSION: "23.05.3"
-  TARGET: "x86/64"
+  TARGET_DIR: "x86/64"
+  TARGET_NAME: "x86-64"
   PROFILE: "generic"
 
 jobs:
@@ -19,12 +20,12 @@ jobs:
 
       - name: Download OpenWrt ImageBuilder
         run: |
-          wget https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET }}/openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET }}.Linux-x86_64.tar.xz
+          wget https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET_DIR }}/openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64.tar.xz
           tar -xf openwrt-imagebuilder-*.tar.xz
 
       - name: Build Custom Image
         run: |
-          cd openwrt-imagebuilder-*
+          cd openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}*
           make image PROFILE=${{ env.PROFILE }} \
             PACKAGES="ttyd bash coreutils whiptail wget gzip dd uci luci luci-ssl ip-full jq jsonfilter kmod-e1000 kmod-e1000e kmod-igb kmod-ixgbe kmod-r8169 kmod-virtio-net kmod-tulip kmod-forcedeth kmod-vmxnet3" \
             FILES=../files \
