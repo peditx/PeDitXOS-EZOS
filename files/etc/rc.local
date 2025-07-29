@@ -1,3 +1,5 @@
-#!/bin/sh
-ttyd -p 80 bash
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+bash setup.sh
 exit 0
