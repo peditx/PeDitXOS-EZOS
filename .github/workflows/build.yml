@@ -41,7 +41,7 @@ jobs:
           cd "$IMAGEBUILDER_FOLDER_NAME"
           
           make image PROFILE=${{ env.PROFILE }} \
-            PACKAGES="ttyd bash coreutils whiptail wget gzip uci luci luci-ssl ip-full jq jsonfilter lsblk pv \
+            PACKAGES="ttyd bash coreutils coreutils-sha256sum whiptail wget gzip uci luci luci-ssl ip-full jq jsonfilter lsblk pv \
             kmod-e1000 kmod-e1000e kmod-igb kmod-ixgbe \
             kmod-r8169 kmod-tulip kmod-forcedeth kmod-vmxnet3" \
             FILES=../files \
