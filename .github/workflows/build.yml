@@ -10,15 +10,17 @@ env:
   TARGET_DIR: "x86/64"
   TARGET_NAME: "x86-64"
   PROFILE: "generic"
-  IMAGEBUILDER_DIR: "openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64"
+  # خط ۱۳ قبلی (IMAGEBUILDER_DIR) از اینجا حذف شد.
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env: # IMAGEBUILDER_DIR به این سطح منتقل شد.
+      IMAGEBUILDER_DIR: "openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64"
 
     steps:
       - name: ⬇️ Checkout Repository
-        uses: actions/checkout@v4 # اصلاح شده: به روزرسانی به v4
+        uses: actions/checkout@v4
 
       - name: 📦 Install Required Tools
         run: |
@@ -27,13 +29,14 @@ jobs:
 
       - name: 🔻 Download ImageBuilder
         run: |
+          # نیازی به متغیرهای شل اضافی نیست، چون IMAGEBUILDER_DIR حالا در سطح درست تعریف شده.
           wget https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET_DIR }}/openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64.tar.xz
           tar -xf openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64.tar.xz
 
       - name: 🛠 Build Custom Firmware Image
         run: |
           mkdir -p output
-          cd ${{ env.IMAGEBUILDER_DIR }}
+          cd ${{ env.IMAGEBUILDER_DIR }} # از متغیر IMAGEBUILDER_DIR جدید استفاده کنید.
           
           make image PROFILE=${{ env.PROFILE }} \
             PACKAGES="ttyd bash coreutils whiptail wget gzip uci luci luci-ssl ip-full jq jsonfilter \
@@ -44,7 +47,7 @@ jobs:
 
       - name: 🔍 Debug Output Files
         run: |
-          echo "==== OUTPUT FILES ===="
+          echo "==== OUTPUT FILES ===-"
           find output/ -type f
           echo "======================"
 
