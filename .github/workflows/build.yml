@@ -10,7 +10,7 @@ env:
   TARGET_DIR: "x86/64"
   TARGET_NAME: "x86-64"
   PROFILE: "generic"
-  IMAGEBUILDER_DIR: "openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64" # اضافه شده
+  IMAGEBUILDER_DIR: "openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64"
 
 jobs:
   build:
@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: ⬇️ Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # اصلاح شده: به روزرسانی به v4
 
       - name: 📦 Install Required Tools
         run: |
@@ -32,19 +32,15 @@ jobs:
 
       - name: 🛠 Build Custom Firmware Image
         run: |
-          # ایجاد پوشه output در ریشه workspace
           mkdir -p output
-          
-          # تغییر مسیر به دایرکتوری ImageBuilder
           cd ${{ env.IMAGEBUILDER_DIR }}
           
-          # ساخت ایمیج با تعیین مسیر خروجی به صورت مطلق
           make image PROFILE=${{ env.PROFILE }} \
             PACKAGES="ttyd bash coreutils whiptail wget gzip uci luci luci-ssl ip-full jq jsonfilter \
             kmod-e1000 kmod-e1000e kmod-igb kmod-ixgbe \
             kmod-r8169 kmod-tulip kmod-forcedeth kmod-vmxnet3" \
             FILES=../files \
-            BIN_DIR=${{ github.workspace }}/output || exit 1 # اصلاح شده: استفاده از github.workspace
+            BIN_DIR=${{ github.workspace }}/output || exit 1
 
       - name: 🔍 Debug Output Files
         run: |
