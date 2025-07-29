@@ -14,24 +14,33 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repo
+      - name: ⬇️ Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Download OpenWrt ImageBuilder
+      - name: 📦 Install Required Tools
+        run: |
+          sudo apt update
+          sudo apt install -y wget tar
+
+      - name: 🔻 Download ImageBuilder
         run: |
           wget https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET_DIR }}/openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64.tar.xz
-          tar -xf openwrt-imagebuilder-*.tar.xz
+          tar -xf openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64.tar.xz
 
-      - name: Build Custom Image
+      - name: 🛠 Build Custom Firmware Image
         run: |
-          cd openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}*
+          cd openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64
           make image PROFILE=${{ env.PROFILE }} \
-            PACKAGES="ttyd bash coreutils whiptail wget gzip dd uci luci luci-ssl ip-full jq jsonfilter kmod-e1000 kmod-e1000e kmod-igb kmod-ixgbe kmod-r8169 kmod-virtio-net kmod-tulip kmod-forcedeth kmod-vmxnet3" \
+            PACKAGES="ttyd bash coreutils whiptail wget gzip dd uci luci luci-ssl ip-full jq jsonfilter \
+              kmod-e1000 kmod-e1000e kmod-igb kmod-ixgbe \
+              kmod-r8169 kmod-virtio-net kmod-tulip \
+              kmod-forcedeth kmod-vmxnet3" \
             FILES=../files \
             BIN_DIR=../output
 
-      - name: Upload Firmware
+      - name: 📤 Upload Output Firmware
         uses: actions/upload-artifact@v4
         with:
           name: PeDitXOS-${{ env.OPENWRT_VERSION }}
