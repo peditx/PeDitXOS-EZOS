@@ -22,7 +22,7 @@ jobs:
       - name: 📦 Install Required Tools
         run: |
           sudo apt update
-          sudo apt install -y wget tar
+          sudo apt install -y wget tar make
 
       - name: 🔻 Download ImageBuilder
         run: |
@@ -31,13 +31,14 @@ jobs:
 
       - name: 🛠 Build Custom Firmware Image
         run: |
+          mkdir -p output
           cd openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64
-          make image PROFILE=${{ env.PROFILE }} \
+          make image PROFILE=${{ env.PROFILE }} IMAGE=combined-efi \
             PACKAGES="ttyd bash coreutils whiptail wget gzip uci luci luci-ssl ip-full jq jsonfilter \
               kmod-e1000 kmod-e1000e kmod-igb kmod-ixgbe \
               kmod-r8169 kmod-tulip kmod-forcedeth kmod-vmxnet3" \
             FILES=../files \
-            BIN_DIR=../output
+            BIN_DIR=../output || exit 1
 
       - name: 📤 Upload Output Firmware
         uses: actions/upload-artifact@v4
