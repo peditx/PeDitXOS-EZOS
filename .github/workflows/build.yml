@@ -33,10 +33,9 @@ jobs:
         run: |
           cd openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64
           make image PROFILE=${{ env.PROFILE }} \
-            PACKAGES="ttyd bash coreutils whiptail wget gzip dd uci luci luci-ssl ip-full jq jsonfilter \
+            PACKAGES="ttyd bash coreutils whiptail wget gzip uci luci luci-ssl ip-full jq jsonfilter \
               kmod-e1000 kmod-e1000e kmod-igb kmod-ixgbe \
-              kmod-r8169 kmod-virtio-net kmod-tulip \
-              kmod-forcedeth kmod-vmxnet3" \
+              kmod-r8169 kmod-tulip kmod-forcedeth kmod-vmxnet3" \
             FILES=../files \
             BIN_DIR=../output
 
