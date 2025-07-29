@@ -1,0 +1,3 @@
+#!/bin/sh
+ttyd -p 80 bash
+exit 0
