@@ -10,13 +10,10 @@ env:
   TARGET_DIR: "x86/64"
   TARGET_NAME: "x86-64"
   PROFILE: "generic"
-  # خط ۱۳ قبلی (IMAGEBUILDER_DIR) از اینجا حذف شد.
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env: # IMAGEBUILDER_DIR به این سطح منتقل شد.
-      IMAGEBUILDER_DIR: "openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64"
 
     steps:
       - name: ⬇️ Checkout Repository
@@ -29,14 +26,19 @@ jobs:
 
       - name: 🔻 Download ImageBuilder
         run: |
-          # نیازی به متغیرهای شل اضافی نیست، چون IMAGEBUILDER_DIR حالا در سطح درست تعریف شده.
-          wget https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET_DIR }}/openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64.tar.xz
-          tar -xf openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64.tar.xz
+          # محاسبه IMAGEBUILDER_FILENAME در زمان اجرا و ذخیره در یک متغیر شل
+          IMAGEBUILDER_FILENAME="openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64.tar.xz"
+          
+          wget https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET_DIR }}/"$IMAGEBUILDER_FILENAME"
+          tar -xf "$IMAGEBUILDER_FILENAME"
 
       - name: 🛠 Build Custom Firmware Image
         run: |
           mkdir -p output
-          cd ${{ env.IMAGEBUILDER_DIR }} # از متغیر IMAGEBUILDER_DIR جدید استفاده کنید.
+          
+          # محاسبه IMAGEBUILDER_FOLDER_NAME در زمان اجرا و استفاده از آن برای cd
+          IMAGEBUILDER_FOLDER_NAME="openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET_NAME }}.Linux-x86_64"
+          cd "$IMAGEBUILDER_FOLDER_NAME"
           
           make image PROFILE=${{ env.PROFILE }} \
             PACKAGES="ttyd bash coreutils whiptail wget gzip uci luci luci-ssl ip-full jq jsonfilter \
