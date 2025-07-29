@@ -1,0 +1,37 @@
+name: Build PeDitXOS Image
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  OPENWRT_VERSION: "23.05.3"
+  TARGET: "x86/64"
+  PROFILE: "generic"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Download OpenWrt ImageBuilder
+        run: |
+          wget https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/${{ env.TARGET }}/openwrt-imagebuilder-${{ env.OPENWRT_VERSION }}-${{ env.TARGET }}.Linux-x86_64.tar.xz
+          tar -xf openwrt-imagebuilder-*.tar.xz
+
+      - name: Build Custom Image
+        run: |
+          cd openwrt-imagebuilder-*
+          make image PROFILE=${{ env.PROFILE }} \
+            PACKAGES="ttyd bash coreutils whiptail wget gzip dd uci luci luci-ssl ip-full jq jsonfilter kmod-e1000 kmod-e1000e kmod-igb kmod-ixgbe kmod-r8169 kmod-virtio-net kmod-tulip kmod-forcedeth kmod-vmxnet3" \
+            FILES=../files \
+            BIN_DIR=../output
+
+      - name: Upload Firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: PeDitXOS-${{ env.OPENWRT_VERSION }}
+          path: output/*.img.gz
