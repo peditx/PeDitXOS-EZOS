@@ -42,4 +42,4 @@ in order to prevent unauthorized SSH logins.
 --------------------------------------------------
 EOF
 fi
-bash setup.sh
+bash /root/setup.sh
