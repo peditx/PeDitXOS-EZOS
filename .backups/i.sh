@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # ==============================================================================
-# ezOS LuCI Application - One-Click Installer v4.9 (CRITICAL EXECUTION FIX)
-# This version uses absolute paths for all commands to ensure execution in any environment.
+# ezOS LuCI Application - One-Click Installer v5.0 (FINAL - Robust Launcher)
+# This version uses a dedicated launcher script to guarantee background execution.
 # ==============================================================================
 
 # --- Helper Functions ---
@@ -28,6 +28,7 @@ cleanup_previous_installation() {
     rm -f /etc/init.d/ezos
     rm -f /usr/bin/ezos_backend.sh
     rm -f /usr/bin/ezos_flash.sh
+    rm -f /usr/bin/ezos_launcher.sh # Remove the new launcher script as well
     rm -f /usr/lib/lua/luci/controller/ezos.lua
     rm -f /usr/lib/lua/luci/controller/ezos_status.lua
     rm -f /usr/lib/lua/luci/model/cbi/ezos.lua
@@ -76,7 +77,7 @@ check_dependencies() {
 
 # --- Main Installation Logic ---
 install_package() {
-    log_info "Starting ezOS LuCI App installation (v4.9)..."
+    log_info "Starting ezOS LuCI App installation (v5.0)..."
 
     # Step 1: Check for root privileges
     if [ "$(id -u)" -ne 0 ]; then
@@ -97,10 +98,26 @@ install_package() {
 
     # Step 5: Write all the files using here-documents (silently)
 
-    # --- File: /usr/bin/ezos_flash.sh (ABSOLUTE PATH FIX) ---
+    # --- NEW File: /usr/bin/ezos_launcher.sh ---
+    cat <<'EOF' > /usr/bin/ezos_launcher.sh
+#!/bin/sh
+# This script's sole purpose is to reliably launch the main flash script in the background.
+
+LOG_FILE="/tmp/peditxos_log.txt"
+FLASH_SCRIPT="/usr/bin/ezos_flash.sh"
+
+# Use nohup to detach the process and redirect all its output to the log file.
+nohup "$FLASH_SCRIPT" "$1" "$2" >> "$LOG_FILE" 2>&1 &
+
+# Exit immediately to return control to LuCI.
+exit 0
+EOF
+    chmod +x /usr/bin/ezos_launcher.sh
+
+    # --- File: /usr/bin/ezos_flash.sh (SIMPLIFIED) ---
     cat <<'EOF' > /usr/bin/ezos_flash.sh
 #!/bin/sh
-# This script's output is handled externally by nohup.
+# This script's output is handled externally by the launcher.
 # Using absolute paths for all commands to ensure they run in any environment.
 
 LOCK_FILE="/tmp/peditx.lock"
@@ -143,7 +160,7 @@ $ECHO "Target Disk: $TARGET_DISK"
 $ECHO "This will take several minutes. Do NOT close the browser window."
 $ECHO "-------------------------------------------------------------"
 
-# The output of this pipeline (stderr from dd) will now be correctly captured by the nohup redirection.
+# The output of this pipeline (stderr from dd) will now be correctly captured by the launcher's redirection.
 $GZIP -d -c "$IMG_GZ_PATH" | $DD of="$TARGET_DISK" bs=4M conv=fsync status=progress
 
 DD_STATUS=${PIPESTATUS[1]}
@@ -164,7 +181,7 @@ $ECHO "Cleaned up temporary image file."
 EOF
     chmod +x /usr/bin/ezos_flash.sh
 
-    # --- File: /usr/lib/lua/luci/controller/ezos.lua ---
+    # --- File: /usr/lib/lua/luci/controller/ezos.lua (LAUNCHER FIX) ---
     cat <<'EOF' > /usr/lib/lua/luci/controller/ezos.lua
 module("luci.controller.ezos", package.seeall)
 
@@ -181,8 +198,8 @@ function index()
             local tmp_path = "/tmp/ezos_upload.img.gz"
             sys.exec("mv %s %s" % {image_file.tmpfile, tmp_path})
             
-            -- This is the robust way to run a long background task and capture all its output.
-            local cmd = string.format("nohup /usr/bin/ezos_flash.sh '%s' '%s' >> /tmp/peditxos_log.txt 2>&1 &", tmp_path, target_disk)
+            -- Call the launcher script, which will handle backgrounding. This call is simple and synchronous.
+            local cmd = string.format("/usr/bin/ezos_launcher.sh '%s' '%s'", tmp_path, target_disk)
             sys.exec(cmd)
         end
         
