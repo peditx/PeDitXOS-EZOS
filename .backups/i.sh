@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # ==============================================================================
-# ezOS LuCI Application - One-Click Installer v4.7 (Robust Logging Fix)
-# This version re-architects the logging mechanism to robustly capture all output.
+# ezOS LuCI Application - One-Click Installer v4.9 (CRITICAL EXECUTION FIX)
+# This version uses absolute paths for all commands to ensure execution in any environment.
 # ==============================================================================
 
 # --- Helper Functions ---
@@ -52,6 +52,7 @@ check_dependencies() {
     check_and_add "dd" "coreutils-dd"
     check_and_add "lsblk" "lsblk"
     check_and_add "uci" "uci"
+    check_and_add "nohup" "coreutils-nohup"
 
     if [ -n "$packages_to_install" ]; then
         log_info "Attempting to install missing packages: $packages_to_install"
@@ -75,7 +76,7 @@ check_dependencies() {
 
 # --- Main Installation Logic ---
 install_package() {
-    log_info "Starting ezOS LuCI App installation (v4.7)..."
+    log_info "Starting ezOS LuCI App installation (v4.9)..."
 
     # Step 1: Check for root privileges
     if [ "$(id -u)" -ne 0 ]; then
@@ -96,73 +97,74 @@ install_package() {
 
     # Step 5: Write all the files using here-documents (silently)
 
-    # --- File: /usr/bin/ezos_flash.sh (LOGGING RE-ARCHITECTED) ---
+    # --- File: /usr/bin/ezos_flash.sh (ABSOLUTE PATH FIX) ---
     cat <<'EOF' > /usr/bin/ezos_flash.sh
 #!/bin/sh
-# This script handles the flashing process and now manages its own logging robustly.
+# This script's output is handled externally by nohup.
+# Using absolute paths for all commands to ensure they run in any environment.
 
-LOG_FILE="/tmp/peditxos_log.txt"
 LOCK_FILE="/tmp/peditx.lock"
 IMG_GZ_PATH="$1"
 TARGET_DISK="$2"
 
-# This is the key change: redirect all output (stdout & stderr) of this script to the log file.
-exec >> "$LOG_FILE" 2>&1
-
-# Redefined log function to just use echo, as output is already redirected.
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - [ezOS Flasher] - $1"
-}
+# --- Absolute paths to common utilities ---
+ECHO="/bin/echo"
+DATE="/bin/date"
+RM="/bin/rm"
+TOUCH="/bin/touch"
+GZIP="/bin/gzip"
+DD="/bin/dd"
+SYNC="/bin/sync"
 
 # The trap's output will also be automatically redirected.
-trap 'rm -f "$LOCK_FILE"; log "Flash script finished."' EXIT TERM INT
+trap '$RM -f "$LOCK_FILE"; $ECHO "Flash script finished."' EXIT TERM INT
 
 # --- Lock File Check ---
 if [ -f "$LOCK_FILE" ]; then
-    log "ERROR: Another PeDitXOS process is running. Please wait for it to finish."
+    $ECHO "$($DATE '+%Y-%m-%d %H:%M:%S') - [ezOS Flasher] - ERROR: Another PeDitXOS process is running."
     exit 1
 fi
-touch "$LOCK_FILE"
+$TOUCH "$LOCK_FILE"
 
 # --- Sanity Checks ---
 if [ -z "$IMG_GZ_PATH" ] || [ ! -f "$IMG_GZ_PATH" ]; then
-    log "ERROR: Image file not provided or not found."
+    $ECHO "ERROR: Image file not provided or not found."
     exit 1
 fi
 if [ -z "$TARGET_DISK" ] || [ ! -b "$TARGET_DISK" ]; then
-    log "ERROR: Target disk not provided or it is not a block device."
+    $ECHO "ERROR: Target disk not provided or it is not a block device."
     exit 1
 fi
 
 # --- Flashing Process ---
-log "Starting flash process..."
-log "Source Image: $IMG_GZ_PATH"
-log "Target Disk: $TARGET_DISK"
-log "This will take several minutes. Do NOT close the browser window."
-log "-------------------------------------------------------------"
+$ECHO "Starting flash process..."
+$ECHO "Source Image: $IMG_GZ_PATH"
+$ECHO "Target Disk: $TARGET_DISK"
+$ECHO "This will take several minutes. Do NOT close the browser window."
+$ECHO "-------------------------------------------------------------"
 
-# The output of this pipeline (stderr from dd) will now be correctly captured by the 'exec' redirection.
-gzip -d -c "$IMG_GZ_PATH" | dd of="$TARGET_DISK" bs=4M conv=fsync status=progress
+# The output of this pipeline (stderr from dd) will now be correctly captured by the nohup redirection.
+$GZIP -d -c "$IMG_GZ_PATH" | $DD of="$TARGET_DISK" bs=4M conv=fsync status=progress
 
 DD_STATUS=${PIPESTATUS[1]}
 
 if [ "$DD_STATUS" -eq 0 ]; then
-    log "-------------------------------------------------------------"
-    log "SUCCESS: Flashing completed."
-    sync
-    log "Disk synced. It is now safe to reboot."
+    $ECHO "-------------------------------------------------------------"
+    $ECHO "SUCCESS: Flashing completed."
+    $SYNC
+    $ECHO "Disk synced. It is now safe to reboot."
 else
-    log "-------------------------------------------------------------"
-    log "ERROR: dd command failed with status code $DD_STATUS."
-    log "Flashing process failed. Please check the log for details."
+    $ECHO "-------------------------------------------------------------"
+    $ECHO "ERROR: dd command failed with status code $DD_STATUS."
+    $ECHO "Flashing process failed. Please check the log for details."
 fi
 
-rm -f "$IMG_GZ_PATH"
-log "Cleaned up temporary image file."
+$RM -f "$IMG_GZ_PATH"
+$ECHO "Cleaned up temporary image file."
 EOF
     chmod +x /usr/bin/ezos_flash.sh
 
-    # --- File: /usr/lib/lua/luci/controller/ezos.lua (SIMPLIFIED) ---
+    # --- File: /usr/lib/lua/luci/controller/ezos.lua ---
     cat <<'EOF' > /usr/lib/lua/luci/controller/ezos.lua
 module("luci.controller.ezos", package.seeall)
 
@@ -179,8 +181,8 @@ function index()
             local tmp_path = "/tmp/ezos_upload.img.gz"
             sys.exec("mv %s %s" % {image_file.tmpfile, tmp_path})
             
-            -- Command is now simplified. The script handles its own logging.
-            local cmd = string.format("/usr/bin/ezos_flash.sh '%s' '%s' &", tmp_path, target_disk)
+            -- This is the robust way to run a long background task and capture all its output.
+            local cmd = string.format("nohup /usr/bin/ezos_flash.sh '%s' '%s' >> /tmp/peditxos_log.txt 2>&1 &", tmp_path, target_disk)
             sys.exec(cmd)
         end
         
@@ -238,7 +240,7 @@ s_progress.template = "ezos/flash_status"
 return m
 EOF
 
-    # --- File: /usr/lib/lua/luci/view/ezos/style.htm (Button Color Fix) ---
+    # --- File: /usr/lib/lua/luci/view/ezos/style.htm ---
     cat <<'EOF' > /usr/lib/lua/luci/view/ezos/style.htm
 <style>
     /* ===== UNIFIED THEME (Dracula Inspired) - Integrated from PeDitXOS Tools ===== */
