@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # ==============================================================================
-# ezOS LuCI Application - One-Click Installer v4.4 (Silent Install & UI Fix)
-# This version makes the installer less verbose and improves button visibility.
+# ezOS LuCI Application - One-Click Installer v4.5 (Logging Fix)
+# This version uses a robust external redirection method to ensure logs are always captured.
 # ==============================================================================
 
 # --- Helper Functions ---
@@ -75,7 +75,7 @@ check_dependencies() {
 
 # --- Main Installation Logic ---
 install_package() {
-    log_info "Starting ezOS LuCI App installation (v4.4)..."
+    log_info "Starting ezOS LuCI App installation (v4.5)..."
 
     # Step 1: Check for root privileges
     if [ "$(id -u)" -ne 0 ]; then
@@ -99,26 +99,25 @@ install_package() {
     # --- File: /usr/bin/ezos_flash.sh ---
     cat <<'EOF' > /usr/bin/ezos_flash.sh
 #!/bin/sh
-# This script handles the flashing process and integrates with PeDitXOS logs and locks.
-# Arg 1: Path to the .img.gz file
-# Arg 2: Target disk (e.g., /dev/sda)
+# This script's output (stdout & stderr) is intended to be redirected by the caller.
 
-LOG_FILE="/tmp/peditxos_log.txt"
 LOCK_FILE="/tmp/peditx.lock"
 IMG_GZ_PATH="$1"
 TARGET_DISK="$2"
 
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - [ezOS Flasher] - $1" >> "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - [ezOS Flasher] - $1"
 }
 
-# --- Lock File and Logging Setup ---
+# The trap's output will also be redirected by the caller.
+trap 'rm -f "$LOCK_FILE"; log "Flash script finished."' EXIT TERM INT
+
+# --- Lock File Check ---
 if [ -f "$LOCK_FILE" ]; then
     log "ERROR: Another PeDitXOS process is running. Please wait for it to finish."
     exit 1
 fi
 touch "$LOCK_FILE"
-trap 'rm -f "$LOCK_FILE"; log "Flash script finished."' EXIT TERM INT
 
 # --- Sanity Checks ---
 if [ -z "$IMG_GZ_PATH" ] || [ ! -f "$IMG_GZ_PATH" ]; then
@@ -137,7 +136,9 @@ log "Target Disk: $TARGET_DISK"
 log "This will take several minutes. Do NOT close the browser window."
 log "-------------------------------------------------------------"
 
-gzip -d -c "$IMG_GZ_PATH" | dd of="$TARGET_DISK" bs=4M conv=fsync status=progress >> "$LOG_FILE" 2>&1
+# The output of this pipeline (stderr from dd) will be caught by the caller's redirection.
+gzip -d -c "$IMG_GZ_PATH" | dd of="$TARGET_DISK" bs=4M conv=fsync status=progress
+
 DD_STATUS=${PIPESTATUS[1]}
 
 if [ "$DD_STATUS" -eq 0 ]; then
@@ -172,7 +173,10 @@ function index()
         if image_file and image_file.tmpfile and target_disk then
             local tmp_path = "/tmp/ezos_upload.img.gz"
             sys.exec("mv %s %s" % {image_file.tmpfile, tmp_path})
-            sys.exec("/usr/bin/ezos_flash.sh %s %s > /dev/null 2>&1 &" % {tmp_path, target_disk})
+            
+            -- This command now wraps the script call and handles all output redirection externally.
+            local cmd = string.format("( /usr/bin/ezos_flash.sh '%s' '%s' ) >> /tmp/peditxos_log.txt 2>&1 &", tmp_path, target_disk)
+            sys.exec(cmd)
         end
         
         luci.http.redirect(luci.dispatcher.build_url("admin", "peditxos", "ezos"))
