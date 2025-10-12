@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # ==============================================================================
-# ezOS LuCI Application - One-Click Installer v4.6 (Syntax & Stability Polish)
-# This version has been reviewed for any hidden syntax issues like line endings.
+# ezOS LuCI Application - One-Click Installer v4.7 (Robust Logging Fix)
+# This version re-architects the logging mechanism to robustly capture all output.
 # ==============================================================================
 
 # --- Helper Functions ---
@@ -75,7 +75,7 @@ check_dependencies() {
 
 # --- Main Installation Logic ---
 install_package() {
-    log_info "Starting ezOS LuCI App installation (v4.6)..."
+    log_info "Starting ezOS LuCI App installation (v4.7)..."
 
     # Step 1: Check for root privileges
     if [ "$(id -u)" -ne 0 ]; then
@@ -96,20 +96,25 @@ install_package() {
 
     # Step 5: Write all the files using here-documents (silently)
 
-    # --- File: /usr/bin/ezos_flash.sh ---
+    # --- File: /usr/bin/ezos_flash.sh (LOGGING RE-ARCHITECTED) ---
     cat <<'EOF' > /usr/bin/ezos_flash.sh
 #!/bin/sh
-# This script's output (stdout & stderr) is intended to be redirected by the caller.
+# This script handles the flashing process and now manages its own logging robustly.
 
+LOG_FILE="/tmp/peditxos_log.txt"
 LOCK_FILE="/tmp/peditx.lock"
 IMG_GZ_PATH="$1"
 TARGET_DISK="$2"
 
+# This is the key change: redirect all output (stdout & stderr) of this script to the log file.
+exec >> "$LOG_FILE" 2>&1
+
+# Redefined log function to just use echo, as output is already redirected.
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - [ezOS Flasher] - $1"
 }
 
-# The trap's output will also be redirected by the caller.
+# The trap's output will also be automatically redirected.
 trap 'rm -f "$LOCK_FILE"; log "Flash script finished."' EXIT TERM INT
 
 # --- Lock File Check ---
@@ -136,7 +141,7 @@ log "Target Disk: $TARGET_DISK"
 log "This will take several minutes. Do NOT close the browser window."
 log "-------------------------------------------------------------"
 
-# The output of this pipeline (stderr from dd) will be caught by the caller's redirection.
+# The output of this pipeline (stderr from dd) will now be correctly captured by the 'exec' redirection.
 gzip -d -c "$IMG_GZ_PATH" | dd of="$TARGET_DISK" bs=4M conv=fsync status=progress
 
 DD_STATUS=${PIPESTATUS[1]}
@@ -157,7 +162,7 @@ log "Cleaned up temporary image file."
 EOF
     chmod +x /usr/bin/ezos_flash.sh
 
-    # --- File: /usr/lib/lua/luci/controller/ezos.lua ---
+    # --- File: /usr/lib/lua/luci/controller/ezos.lua (SIMPLIFIED) ---
     cat <<'EOF' > /usr/lib/lua/luci/controller/ezos.lua
 module("luci.controller.ezos", package.seeall)
 
@@ -174,8 +179,8 @@ function index()
             local tmp_path = "/tmp/ezos_upload.img.gz"
             sys.exec("mv %s %s" % {image_file.tmpfile, tmp_path})
             
-            -- This command now wraps the script call and handles all output redirection externally.
-            local cmd = string.format("( /usr/bin/ezos_flash.sh '%s' '%s' ) >> /tmp/peditxos_log.txt 2>&1 &", tmp_path, target_disk)
+            -- Command is now simplified. The script handles its own logging.
+            local cmd = string.format("/usr/bin/ezos_flash.sh '%s' '%s' &", tmp_path, target_disk)
             sys.exec(cmd)
         end
         
