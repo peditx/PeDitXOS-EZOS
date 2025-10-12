@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # ==============================================================================
-# ezOS LuCI Application - One-Click Installer v4.5 (Logging Fix)
-# This version uses a robust external redirection method to ensure logs are always captured.
+# ezOS LuCI Application - One-Click Installer v4.6 (Syntax & Stability Polish)
+# This version has been reviewed for any hidden syntax issues like line endings.
 # ==============================================================================
 
 # --- Helper Functions ---
@@ -75,7 +75,7 @@ check_dependencies() {
 
 # --- Main Installation Logic ---
 install_package() {
-    log_info "Starting ezOS LuCI App installation (v4.5)..."
+    log_info "Starting ezOS LuCI App installation (v4.6)..."
 
     # Step 1: Check for root privileges
     if [ "$(id -u)" -ne 0 ]; then
